@@ -250,7 +250,7 @@ class DBManager
   def create_db(opts)
     begin
       case opts[:adapter]
-      when :postgresql
+      when 'postgresql'
         # Try to force a connection to be made to the database, if it succeeds
         # then we know we don't need to create it :)
         ActiveRecord::Base.establish_connection(opts)
