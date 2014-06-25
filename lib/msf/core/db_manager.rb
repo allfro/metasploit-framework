@@ -191,27 +191,31 @@ class DBManager
   #
   # Connects this instance to a database
   #
-  def connect(opts={})
+  def connect(sopts={})
 
     return false if not @usable
 
-    nopts = opts.dup
-    if (nopts['port'])
-      nopts['port'] = nopts['port'].to_i
-    end
+    # Convert keys to symbols to make processing consistent
+    opts  = Hash[sopts.map { |k, v| [k.to_sym, v] }]
 
     # Prefer the config file's pool setting
-    nopts['pool'] ||= 75
+    opts[:pool] ||= 75
 
     # Prefer the config file's wait_timeout setting too
-    nopts['wait_timeout'] ||= 300
+    opts[:wait_timeout] ||= 300
+
+    # Enforce numeric values for certain parameters (allow for bad YAML)
+    [:port, :pool, :wait_timeout].each do |numeric_value|
+      next unless opts[numeric_value]
+      opts[numeric_value] = opts[numeric_value].to_i
+    end
 
     begin
       self.migrated = false
-      create_db(nopts)
+      create_db(opts)
 
       # Configure the database adapter
-      ActiveRecord::Base.establish_connection(nopts)
+      ActiveRecord::Base.establish_connection(opts)
 
       # Migrate the database, if needed
       migrate
@@ -244,10 +248,9 @@ class DBManager
   # anything at all here.
   #
   def create_db(opts)
-    opts = Hash[opts.map { |k, v| [k.to_sym, v] }] # Convert keys to symbols to avoid pesky encoding issues.
     begin
       case opts[:adapter]
-      when 'postgresql'
+      when :postgresql
         # Try to force a connection to be made to the database, if it succeeds
         # then we know we don't need to create it :)
         ActiveRecord::Base.establish_connection(opts)
